@@ -5,6 +5,7 @@ import struct
 import time
 import select
 import binascii
+import math
 # Should use stdev
 
 ICMP_ECHO_REQUEST = 8
@@ -48,16 +49,16 @@ def receiveOnePing(mySocket, ID, timeout, destAddr):
         recPacket, addr = mySocket.recvfrom(1024)
 
         # Fill in start
-        
+
+
+        # Fetch the ICMP header from the IP packet
+          
         icmp=recPacket[20:28]
         type, code, checksum, ID_recv, sq = struct.unpack('bbHHh', icmp)
         data= struct.calcsize('d')
         sentdata= struct.unpack('d', recPacket[28:28 + data])[0]
         rt= timeReceived - sentdata						  
-        return rt*1000	
-
-        # Fetch the ICMP header from the IP packet
-        
+        return rt*1000      
         
 
         # Fill in end
@@ -108,7 +109,7 @@ def doOnePing(destAddr, timeout):
     mySocket.close()
     return delay
 
-
+    
 
 def ping(host, timeout=1):
     # timeout=1 means: If one second goes by without a reply from the server,  	# the client assumes that either the client's ping or the server's pong is lost
@@ -116,12 +117,33 @@ def ping(host, timeout=1):
     #print("Pinging " + dest + " using Python:")
     #print("")
     # Calculate vars values and return them
-    #  vars = [str(round(packet_min, 2)), str(round(packet_avg, 2)), str(round(packet_max, 2)),str(round(stdev(stdev_var), 2))]
+    def packet_min(delays):
+        return min(delays)
+
+
+    def packet_max(delays):
+        return max(delays)
+
+
+    def packet_avg(delays):
+        return (sum(delays) / len(delays))
+
+
+    def stdev_var(delays):
+        vart = sum(pow(i - (sum(delays) / len(delays)), 2) for i in delays) / len(delays)
+        return math.sqrt(vart)
+        
     # Send ping requests to a server separated by approximately one second
+    delays = []
+    
     for i in range(0,4):
         delay = doOnePing(dest, timeout)
         #print(delay)
         time.sleep(1)  # one second
+        
+        delays.append(delay)
+        
+    vars = [float(round(packet_min(delays), 2)), float(round(packet_avg(delays), 2)), float(round(packet_max(delays), 2)),float(round(stdev_var(delays), 2))]
 
     return vars
 
